@@ -9,6 +9,7 @@ class Application extends \Symfony\Component\Console\Application
         $commands = parent::getDefaultCommands();
 
         $commands[] = new DiffCommand();
+        $commands[] = new LogCommand();
 
         return $commands;
     }
