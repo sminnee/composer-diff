@@ -3,9 +3,12 @@
 namespace Sminnee\ComposerDiff;
 
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\Process;
 
-class BaseCommand extends Command {
-
+class BaseCommand extends Command
+{
 	/**
 	 * Return a map of package name to path on disk
 	 */
@@ -27,7 +30,11 @@ class BaseCommand extends Command {
 		return $output;
 	}
 
-	protected function reposFromLock($lockContent)
+	/**
+	 * @param $lockContent
+	 * @return array
+	 */
+	protected function reposFromLockfile($lockContent)
 	{
 		$lock = json_decode($lockContent, true);
 
@@ -38,13 +45,81 @@ class BaseCommand extends Command {
 				case 'git':
 					$output[$package['name']] = $package['source'];
 					break;
-
-
 				default:
 					throw new \LogicException("Bad package source type: '" . $package['source']['type'] . "'");
 			}
 		}
 
 		return $output;
+	}
+
+	/**
+	 * @param InputInterface $input
+	 * @param OutputInterface $output
+	 * @param $argument
+	 */
+	protected function exec($argument, InputInterface $input, OutputInterface $output)
+	{
+		list($lockFrom, $lockTo, $rangeArg) = $this->getGitArguments($input, $output);
+		$output->writeln("<info>Project differences</info>");
+
+		$cmdProcess = new Process("git $argument $rangeArg");
+		$cmdProcess->run();
+		$output->writeln($cmdProcess->getOutput());
+
+		$reposFrom = $this->reposFromLockfile($lockFrom);
+		$reposTo = $this->reposFromLockfile($lockTo);
+
+		$packagePaths = $this->packagePaths();
+
+		foreach ($reposTo as $package => $info) {
+			if (!isset($reposFrom[$package])) {
+				$output->writeln("<info>$package</info>");
+				$output->writeln('<comment>doesn\'t exists in '.$input->getArgument('sha-from').'</comment>'.PHP_EOL);
+				continue;
+			}
+			if ($info != $reposFrom[$package]) {
+				$path = $packagePaths[$package];
+
+				$output->writeln("<info>$package in $path</info>");
+				if (!is_dir("$path/.git")) {
+					$output->writeln('<comment>Not a .git repo</comment>'.PHP_EOL);
+					continue;
+				}
+
+				$gitDirArg = escapeshellarg("--git-dir=$path/.git");
+				$shaArg = escapeshellarg($reposFrom[$package]['reference'] . '..' . $info['reference']);
+				$cmd = "git $gitDirArg $argument $shaArg";
+				$this->runCommand($cmd, $gitDirArg, $output);
+			}
+		}
+	}
+
+	/**
+	 * Run a git command
+	 * @param string $cmd
+	 * @param string $gitDirArg
+	 * @param OutputInterface $output
+	 */
+	protected function runCommand($cmd, $gitDirArg, OutputInterface $output)
+	{
+		$diff = new Process($cmd);
+		$diff->run();
+		if (!$diff->isSuccessful()) {
+			// this is signals that the git remote info is outdated
+			if (stristr($diff->getErrorOutput(), 'fatal: Invalid revision range')) {
+				$fetch = new Process("git $gitDirArg fetch");
+				$fetch->run();
+				$output->writeln($fetch->getOutput());
+				// try again
+				$diff = new Process($cmd);
+				$diff->run();
+			}
+		}
+
+		if (!$diff->isSuccessful()) {
+			$output->writeln("<error>" . trim($diff->getErrorOutput()) . "</error>");
+		}
+		$output->writeln(trim($diff->getOutput()) . PHP_EOL);
 	}
 }

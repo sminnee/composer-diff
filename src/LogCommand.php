@@ -7,6 +7,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\Process;
 
 class LogCommand extends BaseCommand
 {
@@ -28,36 +29,10 @@ class LogCommand extends BaseCommand
         ;
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
-    {
-	    list($lockFrom, $lockTo, $rangeArg) = $this->getGitArguments($input, $output);
-        $output->writeln("<info>Project differences</info>");
-        $output->writeln(`git log --oneline $rangeArg`);
+	protected function execute(InputInterface $input, OutputInterface $output)
+	{
+		$argument = 'log --oneline';
+		$this->exec($argument, $input, $output);
+	}
 
-        // get the different log
-
-        $reposFrom = $this->reposFromLock($lockFrom);
-        $reposTo = $this->reposFromLock($lockTo);
-
-        $packagePaths = $this->packagePaths();
-
-        foreach($reposTo as $package => $info) {
-            if($info != $reposFrom[$package]) {
-                $path = $packagePaths[$package];
-
-                $output->writeln("<info>$package in $path</info>");
-                $output->writeln($this->logRepo($path, $reposFrom[$package]['reference'], $info['reference']));
-            }
-        }
-    }
-
-
-	/**
-     * Run a diff on a checked out repo
-     */
-    protected function logRepo($path, $shaFrom, $shaTo) {
-        $gitdirArg = escapeshellarg("--git-dir=$path/.git");
-        $shaArg = escapeshellarg("$shaFrom..$shaTo");
-        return trim(`git $gitdirArg log --oneline $shaArg`);
-    }
 }
