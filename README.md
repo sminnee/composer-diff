@@ -16,4 +16,5 @@ Usage
 Limitations
 -----------
 
-Isn't actually implemented yet, it's just a hello-world so far.
+ * Doesn't work if a package isn't checked out in your project as a git repo
+ * Output not the best
