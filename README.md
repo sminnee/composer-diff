@@ -5,6 +5,17 @@ composer-diff
 
 Unlike `git diff`, however, it will also return differences in any packages marked in your composer.lock file
 
+Installation
+------------
+
+A good way to install CLI tools from composer is 'composer global require':
+
+    composer global require sminnee/composer-diff
+
+Then, if you haven't already, add `~/.composer/vendor/bin` to your shell path.
+
+The binary will be installed to ~/.composer/vendor/bin/composer-diff.
+
 Usage
 -----
 

@@ -13,5 +13,6 @@
     ],
     "autoload": {
         "psr-4": { "Sminnee\\ComposerDiff\\": "src" }
-    }
+    },
+    "bin" : [ "bin/composer-diff" ]
 }
