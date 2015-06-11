@@ -31,6 +31,50 @@ class BaseCommand extends Command
 	}
 
 	/**
+	 * Return an array with lockFrom, lockTo, and rangeArg
+	 */
+	protected function getGitArguments(InputInterface $input, OutputInterface $output) 
+	{
+		$from = $input->getArgument('sha-from');
+		$to = $input->getArgument('sha-to');
+
+		$fileArg = escapeshellarg("$from:composer.lock");
+		$lockFrom = trim(`git show $fileArg`);
+		if(!$lockFrom) {
+			throw new \LogicException("composer.lock can't be found in $from");
+		}
+
+		if($to) {
+			$fileArg = escapeshellarg("$to:composer.lock");
+			$lockTo = trim(`git show $fileArg`);
+			if(!$lockTo) {
+				throw new \LogicException("composer.lock can't be found in $to");
+			}
+		} else {
+			$fileArg = escapeshellarg("$from:composer.lock");
+			if(file_exists("composer.lock")) {
+				$lockTo = trim(file_get_contents("composer.lock"));
+				if(!$lockTo) {
+					throw new \LogicException("composer.lock is empty");
+				}
+
+			} else {
+				throw new \LogicException("composer.lock can't be found in current folder");
+			}
+		}
+
+		// Diff the project
+
+		if($to) {
+			$rangeArg = escapeshellarg("$from..$to");
+		} else {
+			$rangeArg = escapeshellarg("$from");
+		}	
+
+		return array($lockFrom, $lockTo, $rangeArg);
+	}
+
+	/**
 	 * @param $lockContent
 	 * @return array
 	 */
