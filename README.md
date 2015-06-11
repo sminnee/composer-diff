@@ -19,10 +19,16 @@ The binary will be installed to ~/.composer/vendor/bin/composer-diff.
 Usage
 -----
 
+You can see the changes themselves this way:
+
     composer-diff diff sha-from [sha-to]
 
  * `sha-from` is the SHA of your project to use as the starting point
  * `sha-to` is the SHA of your project to use as the end point. If ommitted, the current check-out of code is used
+
+If you wish to see the log messages instead of the changes, use this command:
+
+    composer-diff log sha-from [sha-to]
 
 Limitations
 -----------
