@@ -151,10 +151,10 @@ class BaseCommand extends Command
                             $output->writeln("<error>Error reading commits from github " . $compareUrl . "</error>");
                             if ($compare && isset($compare->message)) {
                                 // error message from github (authentication, rate limiting)
-                                $output->writeln("<error>" . trim($compare->message) . "</error>");
+                                $output->writeln("<error>" . trim($compare->message) . "</error>" . PHP_EOL);
                             } else {
                                 // general error
-                                $output->writeln("<error>" . trim($result) . "</error>");
+                                $output->writeln("<error>" . trim($result) . "</error>" . PHP_EOL);
                             }
                         }
                     } else {
