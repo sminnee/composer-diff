@@ -84,15 +84,17 @@ class BaseCommand extends Command
 
 		$output = array();
 
-		foreach ($lock['packages'] as $package) {
-			switch ($package['source']['type']) {
-				case 'git':
-					$output[$package['name']] = $package['source'];
-					break;
-				default:
-					throw new \LogicException("Bad package source type: '" . $package['source']['type'] . "'");
-			}
-		}
+        foreach ($lock['packages'] as $package) {
+            if (isset($package['source'])) {
+                switch ($package['source']['type']) {
+                    case 'git':
+                        $output[$package['name']] = $package['source'];
+                        break;
+                    default:
+                        throw new \LogicException("Bad package source type: '" . $package['source']['type'] . "'");
+                }
+            }
+        }
 
 		return $output;
 	}
