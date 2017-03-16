@@ -33,7 +33,7 @@ class BaseCommand extends Command
 	/**
 	 * Return an array with lockFrom, lockTo, and rangeArg
 	 */
-	protected function getGitArguments(InputInterface $input, OutputInterface $output) 
+	protected function getGitArguments(InputInterface $input, OutputInterface $output)
 	{
 		$from = $input->getArgument('sha-from');
 		$to = $input->getArgument('sha-to');
@@ -69,7 +69,7 @@ class BaseCommand extends Command
 			$rangeArg = escapeshellarg("$from..$to");
 		} else {
 			$rangeArg = escapeshellarg("$from");
-		}	
+		}
 
 		return array($lockFrom, $lockTo, $rangeArg);
 	}
@@ -105,6 +105,7 @@ class BaseCommand extends Command
 	protected function exec($argument, InputInterface $input, OutputInterface $output)
 	{
 		list($lockFrom, $lockTo, $rangeArg) = $this->getGitArguments($input, $output);
+
 		$output->writeln("<info>Project differences</info>");
 
 		$cmdProcess = new Process("git $argument $rangeArg");
@@ -126,15 +127,47 @@ class BaseCommand extends Command
 				$path = $packagePaths[$package];
 
 				$output->writeln("<info>$package in $path</info>");
-				if (!is_dir("$path/.git")) {
-					$output->writeln('<comment>Not a .git repo</comment>'.PHP_EOL);
-					continue;
-				}
+                if (!is_dir("$path/.git")) {
+                    // check for github
+                    if (preg_match('|https://github.com/([^/]+)/([^/]+).git|',$info['url'],$match)) {
+                        // take commit message from the github api
+                        $compareUrl = 'https://api.github.com/repos/'.$match[1].'/'.$match[2].'/compare/'.$reposFrom[$package]['reference'].'...'. $info['reference'];
 
-				$gitDirArg = escapeshellarg("--git-dir=$path/.git");
-				$shaArg = escapeshellarg($reposFrom[$package]['reference'] . '..' . $info['reference']);
-				$cmd = "git $gitDirArg $argument $shaArg";
-				$this->runCommand($cmd, $gitDirArg, $output);
+                        $ch = curl_init();
+                        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/vnd.github.v3+json','User-Agent: https://github.com/mtheunissen82/composer-diff'));
+                        #curl_setopt($ch, CURLOPT_USERPWD, 'test:test' );
+                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                        curl_setopt($ch, CURLOPT_URL, $compareUrl );
+                        $result = curl_exec($ch);
+
+                        $compare = json_decode($result);
+                        if (isset($compare->commits) && is_array($compare->commits)) {
+                            foreach ($compare->commits as $commit) {
+                                // take first line from commit message
+                                $output->writeln(strtok($commit->commit->message,"\n"));
+                            }
+                            $output->writeln('');
+                        } else {
+                            $output->writeln("<error>Error reading commits from github " . $compareUrl . "</error>");
+                            if ($compare && isset($compare->message)) {
+                                // error message from github (authentication, rate limiting)
+                                $output->writeln("<error>" . trim($compare->message) . "</error>");
+                            } else {
+                                // general error
+                                $output->writeln("<error>" . trim($result) . "</error>");
+                            }
+                        }
+                    } else {
+                        // @TODO maybe ask packagist
+                        $output->writeln('<comment>Not a .git repo</comment>'.PHP_EOL);
+                        continue;
+                    }
+                } else {
+                    $gitDirArg = escapeshellarg("--git-dir=$path/.git");
+                    $shaArg = escapeshellarg($reposFrom[$package]['reference'] . '..' . $info['reference']);
+                    $cmd = "git $gitDirArg $argument $shaArg";
+                    $this->runCommand($cmd, $gitDirArg, $output);
+                }
 			}
 		}
 	}
